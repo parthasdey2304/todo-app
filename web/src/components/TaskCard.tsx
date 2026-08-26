@@ -2,16 +2,17 @@
 
 import { Task } from "@/types";
 import { format } from "date-fns";
-import { Check, Paperclip, MoreVertical, AlertCircle, Clock, Zap } from "lucide-react";
+import { Check, Paperclip, AlertCircle, Clock, Zap, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
   task: Task;
   onToggle: (task: Task) => void;
   onClick: (task: Task) => void;
+  onDelete?: (task: Task) => void;
 }
 
-export function TaskCard({ task, onToggle, onClick }: TaskCardProps) {
+export function TaskCard({ task, onToggle, onClick, onDelete }: TaskCardProps) {
   const isCompleted = task.status === 'completed';
 
   const priorityStyles: Record<string, string> = {
@@ -111,9 +112,20 @@ export function TaskCard({ task, onToggle, onClick }: TaskCardProps) {
         </div>
       </div>
 
-      <button className="flex-shrink-0 bg-white border-[3px] border-black p-1.5 shadow-[3px_3px_0px_0px_#000] opacity-0 group-hover:opacity-100 transition-all hover:bg-[#FFE600] hover:rotate-3">
-        <MoreVertical className="w-4 h-4" />
-      </button>
+      <div className="flex-shrink-0 flex items-center gap-1.5">
+        {onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(task); }}
+            className="bg-[#FF3B30] text-white border-[3px] border-black p-1.5 shadow-[3px_3px_0px_0px_#000] hover:bg-black hover:text-[#FFE600] hover:rotate-3 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_#000] transition-all"
+            title="Delete task"
+          >
+            <Trash2 className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        )}
+        <span className="hidden sm:inline-flex bg-white border-[3px] border-black p-1.5 shadow-[3px_3px_0px_0px_#000] opacity-0 group-hover:opacity-100 transition-all">
+          <span className="font-mono text-[9px] font-black">#DEL</span>
+        </span>
+      </div>
     </div>
   );
 }

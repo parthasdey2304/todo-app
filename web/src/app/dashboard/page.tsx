@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, orderBy, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { Task, Priority } from "@/types";
 import { WeeklyDateSelector } from "@/components/WeeklyDateSelector";
 import { TaskCard } from "@/components/TaskCard";
@@ -223,6 +223,26 @@ export default function DashboardToday() {
     });
   };
 
+  const deleteTask = async (task: Task) => {
+    if (!db) return;
+    if (!confirm(`Delete "${task.title}"?`)) return;
+    try {
+      await deleteDoc(doc(db!, "tasks", task.id));
+    } catch(e:any){ setFirestoreError(e.message); }
+  };
+
+  const deleteAllVisible = async () => {
+    if (!db || !user) return;
+    const ids = [...activeTasks, ...completedTasks].map(t=>t.id);
+    if (ids.length===0) return;
+    if (!confirm(`Delete all ${ids.length} tasks for ${format(selectedDate, "MMM d")}? This cannot be undone.`)) return;
+    try {
+      const batch = writeBatch(db!);
+      ids.forEach(id=> batch.delete(doc(db!, "tasks", id)));
+      await batch.commit();
+    } catch(e:any){ setFirestoreError(e.message); }
+  };
+
   const priorityCycle: Priority[] = ['none','low','medium','high','urgent'];
   const nextPriority = () => {
     const idx = priorityCycle.indexOf(priority);
@@ -414,12 +434,15 @@ export default function DashboardToday() {
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="bg-black text-[#FFE600] px-3 py-1 font-mono text-xs font-black tracking-[0.16em] border-[3px] border-black">ACTIVE — {activeTasks.length}</span>
-                <div className="h-[4px] flex-1 bg-black" />
+                <div className="h-[4px] flex-1 bg-black min-w-[40px]" />
                 <span className="bg-[#FFE600] border-[3px] border-black px-2 py-1 font-mono text-[10px] font-black">{format(selectedDate, "yyyy-MM-dd").toUpperCase()}</span>
+                {(activeTasks.length + completedTasks.length > 0) && (
+                  <button onClick={deleteAllVisible} className="ml-auto bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000] hover:bg-black hover:text-[#FFE600]">DELETE ALL ({activeTasks.length + completedTasks.length}) ✕</button>
+                )}
               </div>
-              {activeTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} />)}
+              {activeTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)}
               {completedTasks.length > 0 && (
                 <div className="pt-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -427,7 +450,7 @@ export default function DashboardToday() {
                     <div className="h-[3px] flex-1 bg-black opacity-40" />
                   </div>
                   <div className="space-y-3 opacity-90">
-                    {completedTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} />)}
+                    {completedTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)}
                   </div>
                 </div>
               )}

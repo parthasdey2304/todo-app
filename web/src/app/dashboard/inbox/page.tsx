@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Task } from "@/types";
 import { TaskCard } from "@/components/TaskCard";
@@ -36,6 +36,11 @@ export default function InboxPage() {
       updatedAt: serverTimestamp()
     });
   };
+  const deleteTask = async (task: Task) => {
+    if (!db) return;
+    if (!confirm(`Delete "${task.title}"?`)) return;
+    await deleteDoc(doc(db!, "tasks", task.id));
+  };
 
   const inboxTasks = tasks.filter(t => !t.scheduledDate && t.status === 'active');
 
@@ -58,6 +63,11 @@ export default function InboxPage() {
         </div>
       </div>
       <div className="w-full max-w-[880px] mx-auto px-3 sm:px-4 md:px-6 py-4 space-y-3">
+        {inboxTasks.length > 0 && (
+          <div className="flex justify-end">
+            <button onClick={async ()=> { if(!db) return; if(!confirm(`Delete all ${inboxTasks.length} inbox tasks?`)) return; const b=writeBatch(db!); inboxTasks.forEach(t=> b.delete(doc(db!, "tasks", t.id))); await b.commit(); }} className="bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000]">DELETE ALL ✕</button>
+          </div>
+        )}
         {inboxTasks.length === 0 ? (
           <div className="bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-10 text-center">
             <div className="w-16 h-16 mx-auto bg-[#A78BFA] border-[4px] border-black grid place-items-center shadow-[4px_4px_0px_0px_#000] rotate-2"><InboxIcon className="w-8 h-8" /></div>
@@ -65,7 +75,7 @@ export default function InboxPage() {
             <p className="font-mono text-xs font-black uppercase opacity-50">NO UNSCHEDULED CHAOS — YOU&apos;RE CLEAN</p>
           </div>
         ) : (
-          inboxTasks.map(t => <TaskCard key={t.id} task={t} onToggle={toggleTask} onClick={() => {}} />)
+          inboxTasks.map(t => <TaskCard key={t.id} task={t} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)
         )}
       </div>
     </div>
