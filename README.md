@@ -1,240 +1,140 @@
-# Vastavik ToDo Ecosystem: The Ultimate Guide
+# Vastavik ToDo Ecosystem: The Ultimate Engineering Guide
 
-Welcome to the **Vastavik ToDo** repository! This document serves as the monolithic, comprehensive, and definitive guide to understanding, building, maintaining, and scaling the Vastavik ToDo ecosystem. 
+Welcome to the **Vastavik ToDo** repository! This document serves as the monolithic, comprehensive, and definitive guide to understanding, building, maintaining, and scaling the Vastavik ToDo ecosystem. This repository houses three distinct but synchronized platforms: Native Android (Jetpack Compose), Web (Next.js), and Desktop (Electron).
 
 ---
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Product Vision & Philosophy](#product-vision--philosophy)
-3. [Architecture Overview](#architecture-overview)
-4. [Technology Stack](#technology-stack)
-5. [Directory Structure](#directory-structure)
-6. [Android Native Application (`app/`)](#android-native-application)
-    - [Prerequisites](#android-prerequisites)
-    - [Setup & Build](#android-setup)
+1. [Executive Summary](#1-executive-summary)
+2. [Product Vision & Philosophy](#2-product-vision--philosophy)
+3. [System Architecture Overview](#3-system-architecture-overview)
+4. [Technology Stack](#4-technology-stack)
+5. [Directory Structure](#5-directory-structure)
+6. [Android Native Application (`app/`)](#6-android-native-application)
+    - [Prerequisites & Environment Setup](#android-prerequisites)
     - [Jetpack Compose UI Architecture](#android-ui)
-    - [State Management](#android-state)
-7. [Next.js Web Application (`web/`)](#nextjs-web-application)
-    - [Prerequisites](#web-prerequisites)
-    - [Setup & Run](#web-setup)
-    - [Tailwind & Glassmorphism](#web-design)
+    - [Voice Input Integration (SpeechRecognizer)](#android-voice)
+    - [State Management & Flow](#android-state)
+7. [Next.js Web Application (`web/`)](#7-nextjs-web-application)
+    - [Prerequisites & Initialization](#web-prerequisites)
+    - [Tailwind, Glassmorphism, & Obsidian Neon](#web-design)
     - [Firebase Authentication Flow](#web-auth)
-    - [Firestore Real-time Sync](#web-firestore)
-8. [Electron Desktop Application (`desktop/`)](#electron-desktop-application)
-    - [Prerequisites](#desktop-prerequisites)
-    - [Setup & Run](#desktop-setup)
-    - [Next.js Integration with Electron](#desktop-nextjs)
-    - [IPC Communication](#desktop-ipc)
-9. [Firebase Infrastructure](#firebase-infrastructure)
+    - [Firestore Real-time Sync & Pagination](#web-firestore)
+    - [Web Speech API Integration](#web-voice)
+8. [Electron Desktop Application (`desktop/`)](#8-electron-desktop-application)
+    - [Next.js Static Export Integration](#desktop-nextjs)
+    - [IPC Communication bridging](#desktop-ipc)
+9. [Firebase Infrastructure](#9-firebase-infrastructure)
     - [Project Configuration](#firebase-config)
     - [Authentication Setup (Google & Phone)](#firebase-auth-setup)
     - [Firestore Data Modeling](#firebase-data-model)
-    - [Security Rules](#firebase-security)
-10. [Design System & UI/UX Guidelines](#design-system)
-11. [Deployment & CI/CD](#deployment)
-12. [Troubleshooting & FAQ](#troubleshooting)
-13. [Contribution Guidelines](#contribution)
-14. [License](#license)
-15. [Extensive Code References](#extensive-code-references)
+    - [Strict Security Rules](#firebase-security)
+10. [Design System & UI/UX Guidelines (Stitch)](#10-design-system)
+11. [Deployment & CI/CD](#11-deployment)
+12. [Troubleshooting & FAQ](#12-troubleshooting)
+13. [Contribution Guidelines](#13-contribution)
+14. [License](#14-license)
 
 ---
 
-## 1. Executive Summary <a name="executive-summary"></a>
+## 1. Executive Summary <a name="1-executive-summary"></a>
 
 Vastavik ToDo is not just a simple task list; it is a fully integrated, multi-platform ecosystem designed to keep users productive across every device they own. Whether a user is on their Android smartphone, at a public computer using a web browser, or working deep in their desktop environment, Vastavik ToDo provides a seamless, real-time synchronized experience.
 
-Built utilizing cutting-edge technologies like Kotlin Jetpack Compose, Next.js 14, Electron, and Firebase, this ecosystem is designed for extreme scale, security, and aesthetic superiority.
+This ecosystem relies heavily on Firebase as its backend-as-a-service (BaaS), utilizing Firestore for real-time document synchronization, Firebase Authentication for secure identity management, and Firebase Storage for handling heavy task attachments (images, PDFs, audio notes).
 
 ---
 
-## 2. Product Vision & Philosophy <a name="product-vision--philosophy"></a>
+## 2. Product Vision & Philosophy <a name="2-product-vision--philosophy"></a>
 
-The core philosophy behind Vastavik ToDo is **"Frictionless Productivity wrapped in Premium Aesthetics."**
+The core design philosophy is "Obsidian Neon"—a dark, premium, charcoal slate environment accented by striking Electric Indigo (`#494bd6`) interactions.
 
-Users are often discouraged by clunky, slow, or ugly productivity tools. Vastavik ToDo solves this by implementing a **Glassmorphic Dark Mode** design system that feels futuristic and premium.
-
-### Key Pillars:
-- **Instant Sync:** A task checked off on the Android app reflects instantaneously on the Web dashboard.
-- **Uncompromised Security:** Utilizing Google Identity Platform and Invisible reCAPTCHA, we ensure zero unauthorized access without adding friction.
-- **Platform Native Feel:** The Android app feels like a true Android app (Jetpack Compose). The desktop app behaves like a native window (Electron). The web app is blazingly fast (Next.js).
+- **Speed to Capture:** Users should be able to create tasks instantly. This is why we integrated Native Voice Dictation (Android) and the Web Speech API (Next.js). Users simply click the microphone and speak their tasks into existence.
+- **Hierarchical Clarity:** Using subtle glassmorphism and exact spacing, tasks have a clear visual hierarchy. Priorities (P1-P4) are instantly recognizable via colored pills.
+- **Zero Friction:** Brand new users receive an automated "Welcome Onboarding" state that instantly seeds their database with 3 tutorial tasks to teach them the UI without a massive onboarding carousel.
 
 ---
 
-## 3. Architecture Overview <a name="architecture-overview"></a>
+## 3. System Architecture Overview <a name="3-system-architecture-overview"></a>
 
-Vastavik ToDo operates on a **Serverless Monorepo Architecture**.
+The repository is structured as a standard Monorepo.
 
-- **Client 1:** Android App (Native Kotlin)
-- **Client 2:** Next.js Web App (React Server Components / Client Components)
-- **Client 3:** Electron Desktop App (Next.js statically exported into a Chromium shell)
-- **Backend/BaaS:** Firebase (Auth, Firestore)
+```
+/
+├── app/          # Native Android Application (Kotlin, Jetpack Compose)
+├── web/          # Next.js 14+ Web Application (React, TypeScript, Tailwind)
+├── desktop/      # Electron Desktop Wrapper (Loads Next.js export)
+├── build.gradle  # Root Android build configuration
+└── package.json  # Root Node configuration
+```
 
-All clients communicate directly with the Firebase backend via secure, encrypted WebSockets (Firestore) and REST APIs (Auth).
+Because of the varying build systems (Gradle vs. npm), the directories operate independently but share the exact same Firestore backend and data schema.
 
 ---
 
-## 4. Technology Stack <a name="technology-stack"></a>
+## 4. Technology Stack <a name="4-technology-stack"></a>
 
 ### Mobile (Android)
-- **Language:** Kotlin
-- **UI Toolkit:** Jetpack Compose
-- **Build System:** Gradle (KTS)
-- **Min SDK:** 24
+- **Language:** Kotlin 1.9.x
+- **UI Toolkit:** Jetpack Compose (Material 3)
+- **Navigation:** Navigation Compose
+- **Backend SDK:** `firebase-firestore-ktx`, `firebase-auth-ktx`
+- **Asynchrony:** Kotlin Coroutines & Flows
 
-### Web (Frontend)
-- **Framework:** Next.js (App Router)
+### Web
+- **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS + PostCSS
-- **State:** React Context API
+- **Styling:** Tailwind CSS + `clsx` + `tailwind-merge`
+- **Icons:** `lucide-react`
+- **Date Manipulation:** `date-fns`
 
-### Desktop (Wrapper)
+### Desktop
 - **Framework:** Electron.js
-- **Builder:** electron-builder
-- **Dev Server:** concurrently & wait-on
-
-### Backend & Infrastructure
-- **Database:** Cloud Firestore (NoSQL)
-- **Authentication:** Firebase Auth (Google OAuth, Phone SMS OTP)
-- **Hosting (Planned):** Vercel / Firebase Hosting
+- **Renderer:** Next.js (Static HTML Export `output: 'export'`)
 
 ---
 
-## 5. Directory Structure <a name="directory-structure"></a>
+## 5. Firebase Infrastructure & Data Models <a name="9-firebase-infrastructure"></a>
 
-```text
-e:\todo-app\
-├── app/                    # Android Native Kotlin Application
-│   ├── build.gradle.kts
-│   └── src/
-│       └── main/
-│           ├── AndroidManifest.xml
-│           └── java/com/vastavik/todo/MainActivity.kt
-├── web/                    # Next.js Web Application
-│   ├── .env.local          # Firebase Secrets
-│   ├── package.json
-│   └── src/
-│       ├── app/
-│       │   ├── page.tsx    # Auth Screen
-│       │   └── dashboard/  # Protected ToDo List
-│       ├── components/     # React Components
-│       └── lib/            # Firebase Initialization
-├── desktop/                # Electron Desktop Application
-│   ├── electron/
-│   │   └── main.js         # Electron Entry Point
-│   ├── next.config.ts      # Static Export Config
-│   └── package.json
-├── gradle-8.2/             # Local Gradle Wrapper
-├── build.gradle.kts        # Root Gradle Config
-└── settings.gradle.kts     # Root Settings
-```
+The central nervous system of Vastavik ToDo is Cloud Firestore.
 
----
+### Task Data Model (`tasks` collection)
+Every task document contains highly detailed metadata to support advanced filtering, recurring logic, and deadline management.
 
-## 6. Android Native Application (`app/`) <a name="android-native-application"></a>
-
-The mobile application is built natively to ensure maximum performance and battery efficiency on Android devices.
-
-### Prerequisites <a name="android-prerequisites"></a>
-- Android Studio Ladybug or newer.
-- Android SDK 34 (API Level 34).
-- JDK 17.
-
-### Setup & Build <a name="android-setup"></a>
-1. Open the root `todo-app` folder in Android Studio.
-2. Allow Gradle to sync. Ensure `android.useAndroidX=true` is present in `gradle.properties`.
-3. Click **Run** or use the CLI: `./gradle-8.2/bin/gradle assembleDebug`.
-4. To install via ADB manually: `adb install app/build/outputs/apk/debug/app-debug.apk`.
-
-*(Note: If ADB reports "no devices found", ensure Developer Options and USB Debugging are enabled on your Android device, and that the device is authorized.)*
-
-### Jetpack Compose UI Architecture <a name="android-ui"></a>
-We utilize a declarative UI approach. `MainActivity.kt` hosts a `LazyColumn` for infinite scrolling of tasks. Checkboxes use `MutableState` to trigger immediate recomposition upon user interaction, eliminating the need for complex `RecyclerView` adapters.
-
----
-
-## 7. Next.js Web Application (`web/`) <a name="nextjs-web-application"></a>
-
-The web platform is designed to be accessible from any public or private computer securely.
-
-### Prerequisites <a name="web-prerequisites"></a>
-- Node.js v18+
-- npm v9+
-
-### Setup & Run <a name="web-setup"></a>
-```bash
-cd web
-npm install
-npm run dev
-```
-Navigate to `http://localhost:3000`.
-
-### Tailwind & Glassmorphism <a name="web-design"></a>
-We use heavily customized Tailwind utility classes to achieve a "Glassmorphism" effect. Core utilities used:
-- `bg-[#151E2E]/80` (80% opacity background)
-- `backdrop-blur-xl` (Intense background blur)
-- `border border-[#2e3544]` (Subtle rim lighting)
-
-### Firebase Authentication Flow <a name="web-auth"></a>
-The app relies on two primary auth methods:
-1. **Google OAuth**: Triggered via `signInWithPopup(auth, provider)`.
-2. **Phone OTP**: Utilizes `signInWithPhoneNumber` and `RecaptchaVerifier`. The reCAPTCHA is invisible and attaches to a dedicated DOM node (`#recaptcha-container`).
-
-### Firestore Real-time Sync <a name="web-firestore"></a>
-The dashboard implements an `onSnapshot` listener attached to the `tasks` collection. Any change made (even from the Android app) will trigger the snapshot callback, updating the React state instantly.
-
----
-
-## 8. Electron Desktop Application (`desktop/`) <a name="electron-desktop-application"></a>
-
-The desktop wrapper takes the Next.js web application and packages it as a standalone executable for Windows, Mac, and Linux.
-
-### Prerequisites <a name="desktop-prerequisites"></a>
-- Node.js v18+
-
-### Setup & Run <a name="desktop-setup"></a>
-```bash
-cd desktop
-npm install
-# Start Next.js and Electron concurrently
-npm run dev:electron 
-```
-
-### Next.js Integration with Electron <a name="desktop-nextjs"></a>
-Electron cannot natively run a Next.js server in production. To solve this, `next.config.ts` is configured with `output: 'export'`. This generates static HTML/JS/CSS files in the `out/` directory. `electron/main.js` is programmed to load `localhost:3000` during development, but loads `file://.../out/index.html` when packaged for production.
-
----
-
-## 9. Firebase Infrastructure <a name="firebase-infrastructure"></a>
-
-The entire backend relies on Firebase (Project ID: `lovi-clone-app-001`).
-
-### Authentication Setup (Google & Phone) <a name="firebase-auth-setup"></a>
-To prevent `auth/configuration-not-found` errors, you MUST ensure that both Google and Phone providers are enabled in the Firebase Console under `Authentication -> Sign-in method`.
-
-### Firestore Data Modeling <a name="firebase-data-model"></a>
-Collection: `tasks`
-Document Structure:
-```json
-{
-  "userId": "string (Firebase UID)",
-  "text": "string (Task description)",
-  "completed": "boolean",
-  "createdAt": "timestamp"
+```typescript
+interface Task {
+  id: string; // Auto-generated Document ID
+  userId: string; // The UID of the authenticated user
+  title: string;
+  description?: string;
+  status: 'active' | 'completed' | 'archived';
+  scheduledDate?: string; // YYYY-MM-DD format for fast querying
+  dueAt?: string; // ISO string for exact deadlines
+  reminderAt?: string; // ISO string for push notifications
+  recurrence?: 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom';
+  categoryId?: string;
+  categoryName?: string;
+  labels: string[]; // e.g. ["urgent", "home"]
+  priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
+  attachments: Attachment[];
+  order: number; // For drag-and-drop sorting
+  createdAt: timestamp;
+  updatedAt: timestamp;
+  completedAt?: timestamp;
 }
 ```
 
-### Security Rules <a name="firebase-security"></a>
-*IMPORTANT: Before going to production, deploy these rules to Firestore to prevent unauthorized access:*
+### Security Rules (Firestore)
+Before pushing to production, the default Test Mode rules must be replaced.
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /tasks/{taskId} {
-      // Only allow users to read/write their own tasks
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Allow creation if the userId matches the authenticated user
+      // Users can only read/write their own tasks
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
@@ -243,126 +143,83 @@ service cloud.firestore {
 
 ---
 
-## 10. Design System & UI/UX Guidelines <a name="design-system"></a>
+## 6. Android Native Application (`app/`) <a name="6-android-native-application"></a>
 
-The Vastavik ToDo design system ("Obsidian Neon") is meticulously crafted to reduce eye strain while maintaining a high-performance, futuristic aesthetic.
+The Android app provides the fastest, most native experience possible using modern Android development standards.
 
-- **Background:** `#0c1321` (Deep Space Navy)
-- **Surfaces:** `#151E2E` (Slate)
-- **Primary Accent:** `#494bd6` (Electric Indigo) to `#8083ff` (Radiant Violet) gradients.
-- **Success/Checkmarks:** `#44e2cd` (Mint Teal)
-- **Typography:** Geist / Inter for maximum legibility of tasks.
+### Jetpack Compose UI Architecture
+Instead of using XML layouts, the entire UI is written in declarative Kotlin using Jetpack Compose.
+- `MainActivity.kt` hosts the `NavHost` and the `Scaffold`.
+- The `BottomNavigationBar` handles routing between `Inbox`, `Today`, and `Settings`.
+- A massive technical achievement here is the **Weekly Date Selector**, implemented via `LazyRow` combined with `java.util.Calendar` to precisely match the web's horizontal date scrolling.
 
-Every interactive element must have a transition (e.g., `transition-colors`, `transition-opacity`) to ensure the app feels "alive" and responsive to user input.
-
----
-
-## 11. Deployment & CI/CD <a name="deployment"></a>
-
-### Web App Deployment
-1. Connect the GitHub repository to **Vercel**.
-2. Set the Root Directory to `web/`.
-3. Add the Firebase environment variables from `.env.local` to Vercel's Environment Variables settings.
-4. Deploy.
-
-### Android App Deployment
-1. Generate a signed APK/AAB in Android Studio via `Build -> Generate Signed Bundle / APK`.
-2. Upload to the Google Play Console.
-
-### Desktop App Deployment
-1. Run `npm run build` in the `desktop/` folder (requires configuring `electron-builder` in `package.json`).
-2. Distribute the generated `.exe` or `.dmg` files.
-
----
-
-## 12. Troubleshooting & FAQ <a name="troubleshooting"></a>
-
-**Q: I am getting `Firebase: Error (auth/configuration-not-found).` when testing phone login!**
-A: This means Phone Authentication is not enabled in your Firebase Console. Go to the console, click Authentication -> Sign-in method, and toggle "Phone" to Enabled.
-
-**Q: `adb install` says `no devices/emulators found`.**
-A: Your phone is either not plugged in, or USB debugging is disabled. Go to Settings -> Developer Options -> Enable USB Debugging. When you plug it in, accept the RSA key fingerprint prompt.
-
-**Q: The web app dashboard redirects me back to the login screen immediately.**
-A: The global `AuthProvider` didn't detect a valid session. Make sure you successfully completed the OTP or Google Sign-In flow, and that your browser isn't blocking third-party cookies (which Firebase uses for auth state).
-
----
-
-## 13. Contribution Guidelines <a name="contribution"></a>
-
-We welcome contributions! When committing code, please adhere to the following standards:
-1. **Commit Messages:** Use Conventional Commits (e.g., `feat: add new button`, `fix: resolve auth crash`).
-2. **TypeScript:** Always define interfaces for new data structures. Avoid `any`.
-3. **Styling:** Stick strictly to the predefined Tailwind color palette. Do not introduce arbitrary hex codes into the class names unless absolutely necessary.
-
----
-
-## 14. License <a name="license"></a>
-
-This project is proprietary and confidential. Unauthorized copying of this repository, via any medium, is strictly prohibited. 
-Property of Vastavik ToDo Ecosystem.
-
----
-
-## 15. Extensive Code References <a name="extensive-code-references"></a>
-
-To ensure this documentation is completely comprehensive, below are the core architectural reference implementations used in the ecosystem.
-
-### Firebase Initialization (Web/Desktop)
-```typescript
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-export { app, auth, db };
-```
-
-### Global Auth State Provider (React Context)
-```typescript
-"use client";
-import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
+### Voice Input Integration (SpeechRecognizer)
+Instead of relying on clunky keyboards, users can dictate tasks.
+```kotlin
+val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
 }
+speechRecognizerLauncher.launch(intent)
+```
+The result is instantly stored in `voiceInputResult` and injected into the task creation UI.
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
-export const useAuth = () => useContext(AuthContext);
+### Build Instructions
+1. Open the `todo-app` folder in Android Studio.
+2. Wait for Gradle Sync to complete.
+3. Ensure you have `google-services.json` inside the `app/` directory (created via Firebase Console).
+4. Hit **Run (Shift + F10)**.
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+---
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+## 7. Next.js Web Application (`web/`) <a name="7-nextjs-web-application"></a>
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+### File-Based Routing (App Router)
+- `/`: Landing page and Authentication UI.
+- `/dashboard`: The "Today" view featuring the `WeeklyDateSelector`.
+- `/dashboard/inbox`: Tasks without a scheduled date.
+- `/dashboard/upcoming`: Tasks scheduled for future dates.
+- `/dashboard/projects`: High-level folder views.
+- `/dashboard/settings`: Dark mode toggles and account management.
+
+### Web Speech API Integration
+We bypass third-party dependencies by utilizing the native `window.SpeechRecognition` API. When the user clicks the microphone, the browser requests audio permissions, listens to the stream, and performs continuous transcription directly into the task input bar.
+
+### Build Instructions
+```bash
+cd web
+npm install
+npm run dev
 ```
 
-*(End of Documentation)*
+---
+
+## 8. Deployment & CI/CD <a name="11-deployment"></a>
+
+### Web App Deployment (Vercel)
+The web application is fully optimized for Vercel. 
+1. Connect the GitHub repository to Vercel.
+2. Set the Root Directory to `web/`.
+3. Add the Firebase API keys to Vercel Environment Variables.
+4. Deploy!
+
+### Android Deployment (Google Play)
+1. Run `./gradlew bundleRelease` in the root directory.
+2. Sign the `.aab` (Android App Bundle) with your keystore.
+3. Upload to the Google Play Console.
+
+---
+
+## 9. Design System & UI/UX Guidelines (Stitch) <a name="10-design-system"></a>
+
+The UI for this application was meticulously generated and prototyped using the **Stitch MCP**. 
+- **Primary Background:** `#0C1321` (Deep Space Charcoal)
+- **Surface Color:** `#151E2E` (Slate)
+- **Primary Accent:** `#494BD6` (Electric Indigo)
+- **Text Primary:** `#DCE2F6`
+- **Text Secondary:** `#98A6BD`
+- **Border Radius:** `rounded-xl` (12dp) to `rounded-2xl` (16dp).
+- **Elevation:** We avoid heavy shadows in dark mode, opting instead for precise 1px borders (`#2e3544`) to separate z-indexes.
+
+---
+
+*End of Vastavik ToDo Documentation.*
