@@ -49,7 +49,7 @@ export default function UpcomingPage() {
   return (
     <div className="min-h-screen bg-[#FFE600] relative w-full overflow-x-hidden">
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 12px)` }} />
-      <div className="bg-white border-b-[4px] border-black pl-14 md:pl-6 pr-3 sm:px-6 py-4 sm:py-6 shadow-[0px_4px_0px_0px_#000] relative">
+      <div className="bg-white border-b-[4px] border-black pl-[72px] md:pl-6 pr-3 sm:px-6 py-4 sm:py-6 shadow-[0px_4px_0px_0px_#000] relative">
         <h1 className="font-black text-[24px] sm:text-[32px] tracking-tighter uppercase flex flex-wrap items-center gap-2 sm:gap-3" style={{ fontFamily: 'Syne, sans-serif' }}>
           <span className="h-10 w-10 sm:h-12 sm:w-12 bg-[#22D3EE] border-[4px] border-black grid place-items-center shadow-[4px_4px_0px_0px_#000] rotate-[1deg] shrink-0"><Calendar className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" /></span>
           UPCOMING

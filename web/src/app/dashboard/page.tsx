@@ -6,11 +6,11 @@ import { useAuth } from "@/components/AuthProvider";
 import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "firebase/firestore";
-import { Task, Priority } from "@/types";
+import { Task, Priority, Project } from "@/types";
 import { WeeklyDateSelector } from "@/components/WeeklyDateSelector";
 import { TaskCard } from "@/components/TaskCard";
 import { format } from "date-fns";
-import { Plus, Check, Mic, Calendar as CalendarIcon, Flag, Clock, CircleDot, Zap } from "lucide-react";
+import { Plus, Check, Mic, Calendar as CalendarIcon, Flag, Clock, CircleDot, Zap, Folder, X, Box } from "lucide-react";
 
 export default function DashboardToday() {
   const { user, loading } = useAuth();
@@ -35,6 +35,15 @@ export default function DashboardToday() {
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  // Project picker state — available right from Today so you never leave the page to create a slab
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectColor, setNewProjectColor] = useState("bg-[#FFE600]");
+  const [newProjectIcon, setNewProjectIcon] = useState("◆");
+  const [createProjectError, setCreateProjectError] = useState("");
 
   const recognitionRef = useRef<any>(null);
 
@@ -107,6 +116,19 @@ export default function DashboardToday() {
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [user, loading, router]);
+
+  // Subscribe projects for Today page picker
+  useEffect(() => {
+    if (!user || !db) return;
+    const q = query(collection(db!, "projects"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      const arr: Project[] = [];
+      snap.forEach(d => arr.push({ id: d.id, ...d.data()} as Project));
+      arr.sort((a,b)=> (a.order||0) - (b.order||0));
+      setProjects(arr);
+    }, (err)=> console.error("[today projects]", err));
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     if (user && db) {
@@ -262,7 +284,7 @@ export default function DashboardToday() {
       {/* hash bg */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 12px)` }} />
 
-      <header className="sticky top-0 z-10 bg-white border-b-[4px] border-black shadow-[0px_4px_0px_0px_#000] flex items-center justify-between gap-2 pl-14 md:pl-6 pr-3 sm:px-6 py-3">
+      <header className="sticky top-0 z-10 bg-white border-b-[4px] border-black shadow-[0px_4px_0px_0px_#000] flex items-center justify-between gap-2 pl-[72px] md:pl-6 pr-3 sm:px-6 py-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <h1 className="font-black text-[22px] sm:text-[30px] tracking-tighter uppercase flex items-center gap-2 shrink-0" style={{ fontFamily: 'Syne, sans-serif' }}>
             <span className="bg-black text-[#FFE600] px-2 py-0.5 border-[3px] border-black shadow-[3px_3px_0px_0px_#000] rotate-[-1deg] text-[20px] sm:text-[30px]">TODAY</span>
