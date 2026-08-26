@@ -13,12 +13,16 @@ export default function UpcomingPage() {
 
   useEffect(() => {
     if (user && db) {
-      const q = query(collection(db!, "tasks"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+      const q = query(collection(db!, "tasks"), where("userId", "==", user.uid));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const tasksArray: Task[] = [];
         snapshot.forEach((doc) => tasksArray.push({ id: doc.id, ...doc.data() } as Task));
+        tasksArray.sort((a,b)=> (b.order||0) - (a.order||0));
         setTasks(tasksArray);
-      }, (err)=> console.error("[upcoming] firestore", err));
+      }, (err: any)=> {
+        console.error("[upcoming] firestore", err);
+        if (err?.message?.includes("building")) console.warn("index building, retry");
+      });
       return () => unsubscribe();
     }
   }, [user]);

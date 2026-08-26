@@ -107,14 +107,30 @@ export default function DashboardToday() {
 
   useEffect(() => {
     if (user && db) {
-      const q = query(collection(db!, "tasks"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+      // Avoid composite index while it is CREATING — query without orderBy, sort client-side
+      const q = query(collection(db!, "tasks"), where("userId", "==", user.uid));
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const tasksArray: Task[] = [];
         querySnapshot.forEach((doc) => tasksArray.push({ id: doc.id, ...doc.data() } as Task));
+        // client-side sort: newest first (order fallback)
+        tasksArray.sort((a,b) => {
+          const aTime = (a as any).createdAt?.seconds ? (a as any).createdAt.seconds*1000 : (a.order || 0);
+          const bTime = (b as any).createdAt?.seconds ? (b as any).createdAt.seconds*1000 : (b.order || 0);
+          if (typeof aTime === 'string') return String(b.createdAt).localeCompare(String(a.createdAt));
+          return (bTime as number) - (aTime as number);
+        });
         setTasks(tasksArray);
         if (hasEverHadTasks === null) setHasEverHadTasks(tasksArray.length > 0);
         else if (tasksArray.length > 0 && !hasEverHadTasks) setHasEverHadTasks(true);
-      }, (err)=> { console.error("[today] firestore", err); setFirestoreError(err.message); });
+        setFirestoreError(""); // clear index-building error if recovered
+      }, (err: any)=> {
+        console.error("[today] firestore", err);
+        // If index building, show transient but don't block writes
+        if (err?.message?.includes("index") && err?.message?.includes("building")) {
+          setFirestoreError("Index building — tasks still save! Read will stabilize in 1-2 min. Posting works now.");
+          setTimeout(()=> setFirestoreError(""), 5000);
+        } else setFirestoreError(err.message);
+      });
       return () => unsubscribe();
     }
   }, [user, hasEverHadTasks]);
