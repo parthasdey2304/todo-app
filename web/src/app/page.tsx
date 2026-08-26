@@ -37,22 +37,33 @@ export default function AuthPage() {
   };
 
   const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible'
-      });
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
     }
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+    });
   };
 
   const handlePhoneSignIn = async () => {
+    const cleaned = phoneNumber.replace(/\s/g, "");
+    if (!cleaned.startsWith("+") || cleaned.length < 10) {
+      setAuthError("Enter a valid phone number with country code (e.g. +91XXXXXXXXXX).");
+      return;
+    }
     try {
       setAuthError("");
       setupRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      const confirmation = await signInWithPhoneNumber(auth, cleaned, window.recaptchaVerifier);
       setConfirmationResult(confirmation);
     } catch (error: any) {
-      setAuthError("Failed to send SMS. Ensure number has country code (e.g., +1).");
+      console.error("Phone sign-in error:", error);
+      const msg = error?.message?.includes("auth/invalid-app-credential")
+        ? "Firebase reCAPTCHA verification failed. Check that Phone sign-in is enabled in your Firebase console (Authentication > Sign-in method > Phone)."
+        : error?.message || "Failed to send SMS. Ensure the number includes its country code (e.g. +91).";
+      setAuthError(msg);
+      window.recaptchaVerifier = null;
     }
   };
 
@@ -62,7 +73,10 @@ export default function AuthPage() {
         await confirmationResult.confirm(otp);
       }
     } catch (error: any) {
+      console.error("OTP verify error:", error);
       setAuthError("Invalid OTP. Try again.");
+      setConfirmationResult(null);
+      setOtp("");
     }
   };
 
@@ -139,6 +153,12 @@ export default function AuthPage() {
                 className="mt-4 w-full rounded-lg bg-gradient-to-r from-[#494bd6] to-[#8083ff] p-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 Verify & Sign In
+              </button>
+              <button
+                onClick={() => { setConfirmationResult(null); setOtp(""); setAuthError(""); }}
+                className="mt-2 w-full text-sm text-[#98A6BD] hover:text-[#c0c1ff] transition-colors py-1"
+              >
+                Change phone number
               </button>
             </div>
           )}

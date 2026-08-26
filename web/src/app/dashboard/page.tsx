@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, orderBy } from "firebase/firestore";
 
 interface Task {
-  id: number;
+  id: string;
   text: string;
   completed: boolean;
 }
@@ -25,19 +26,59 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, "tasks"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const tasksArray: Task[] = [];
+        querySnapshot.forEach((doc) => {
+          tasksArray.push({ id: doc.id, ...doc.data() } as Task);
+        });
+        setTasks(tasksArray);
+      }, (error) => {
+        console.error("Firestore error:", error);
+        // Note: For the first query with orderBy and where, Firestore requires an index.
+        // It will print a URL in the console to create it.
+      });
+
+      return () => unsubscribe();
+    }
+  }, [user]);
+
   if (loading || !user) return null;
 
   const handleSignOut = () => signOut(auth);
 
-  const addTask = () => {
-    if (newTask.trim()) {
-      setTasks([...tasks, { id: Date.now(), text: newTask, completed: false }]);
-      setNewTask("");
+  const addTask = async () => {
+    if (newTask.trim() && user) {
+      try {
+        await addDoc(collection(db, "tasks"), {
+          userId: user.uid,
+          text: newTask,
+          completed: false,
+          createdAt: serverTimestamp()
+        });
+        setNewTask("");
+      } catch (error) {
+        console.error("Error adding task: ", error);
+      }
     }
   };
 
-  const toggleTask = (id: number) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  const toggleTask = async (task: Task) => {
+    try {
+      const taskRef = doc(db, "tasks", task.id);
+      await updateDoc(taskRef, {
+        completed: !task.completed
+      });
+    } catch (error) {
+      console.error("Error updating task: ", error);
+    }
   };
 
   return (
@@ -110,14 +151,14 @@ export default function Dashboard() {
                   }`}
                 >
                   <button 
-                    onClick={() => toggleTask(task.id)}
+                    onClick={() => toggleTask(task)}
                     className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${
                       task.completed ? 'bg-[#44e2cd] border-[#44e2cd]' : 'border-[#98A6BD] hover:border-[#494bd6]'
                     }`}
                   >
                     {task.completed && <svg className="w-4 h-4 text-[#003731]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                   </button>
-                  <span className={`text-lg ${task.completed ? 'line-through text-[#98A6BD]' : 'text-[#dce2f6]'}`}>
+                  <span className={`text-lg flex-1 ${task.completed ? 'line-through text-[#98A6BD]' : 'text-[#dce2f6]'}`}>
                     {task.text}
                   </span>
                 </div>
