@@ -18,11 +18,14 @@ export default function DashboardToday() {
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [hasEverHadTasks, setHasEverHadTasks] = useState<boolean | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const [firestoreError, setFirestoreError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
+  const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
 
   // Functional pills state
   const [priority, setPriority] = useState<Priority>('none');
@@ -107,6 +110,7 @@ export default function DashboardToday() {
 
   useEffect(() => {
     if (user && db) {
+      setTasksLoading(true);
       // Avoid composite index while it is CREATING — query without orderBy, sort client-side
       const q = query(collection(db!, "tasks"), where("userId", "==", user.uid));
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -122,9 +126,11 @@ export default function DashboardToday() {
         setTasks(tasksArray);
         if (hasEverHadTasks === null) setHasEverHadTasks(tasksArray.length > 0);
         else if (tasksArray.length > 0 && !hasEverHadTasks) setHasEverHadTasks(true);
+        setTasksLoading(false);
         setFirestoreError(""); // clear index-building error if recovered
       }, (err: any)=> {
         console.error("[today] firestore", err);
+        setTasksLoading(false);
         // If index building, show transient but don't block writes
         if (err?.message?.includes("index") && err?.message?.includes("building")) {
           setFirestoreError("Index building — tasks still save! Read will stabilize in 1-2 min. Posting works now.");
@@ -132,8 +138,10 @@ export default function DashboardToday() {
         } else setFirestoreError(err.message);
       });
       return () => unsubscribe();
+    } else if (!user && !loading) {
+      setTasksLoading(false);
     }
-  }, [user, hasEverHadTasks]);
+  }, [user, hasEverHadTasks, loading]);
 
   if (loading || !user) return null;
 
@@ -225,9 +233,9 @@ export default function DashboardToday() {
 
   const deleteTask = async (task: Task) => {
     if (!db) return;
-    if (!confirm(`Delete "${task.title}"?`)) return;
     try {
       await deleteDoc(doc(db!, "tasks", task.id));
+      setPendingDelete(null);
     } catch(e:any){ setFirestoreError(e.message); }
   };
 
@@ -235,11 +243,11 @@ export default function DashboardToday() {
     if (!db || !user) return;
     const ids = [...activeTasks, ...completedTasks].map(t=>t.id);
     if (ids.length===0) return;
-    if (!confirm(`Delete all ${ids.length} tasks for ${format(selectedDate, "MMM d")}? This cannot be undone.`)) return;
     try {
       const batch = writeBatch(db!);
       ids.forEach(id=> batch.delete(doc(db!, "tasks", id)));
       await batch.commit();
+      setPendingDeleteAll(false);
     } catch(e:any){ setFirestoreError(e.message); }
   };
 
@@ -410,7 +418,45 @@ export default function DashboardToday() {
         )}
 
         <div className="space-y-3">
-          {hasEverHadTasks === false ? (
+          {tasksLoading ? (
+            <div className="bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-6 sm:p-8 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 10px)` }} />
+              <div className="absolute top-0 left-0 right-0 h-2 flex">
+                <div className="flex-1 bg-[#FFE600] border-r-[2px] border-black animate-pulse" />
+                <div className="flex-1 bg-[#22D3EE] border-r-[2px] border-black animate-pulse" style={{ animationDelay: '150ms'}} />
+                <div className="flex-1 bg-[#A78BFA] border-r-[2px] border-black animate-pulse" style={{ animationDelay: '300ms'}} />
+                <div className="flex-1 bg-[#FF3B30] animate-pulse" style={{ animationDelay: '450ms'}} />
+              </div>
+              <div className="relative text-center pt-3">
+                <div className="inline-flex items-center gap-2 bg-black text-[#FFE600] px-3 py-1 font-mono text-[10px] font-black tracking-[0.18em] border-[2px] border-black">
+                  <span className="h-2 w-2 bg-[#FFE600] animate-pulse" /> PULLING SLABS FROM THE VOID —
+                  FIRESTORE SYNC
+                </div>
+                <h3 className="mt-3 font-black text-xl sm:text-2xl tracking-tighter uppercase flex items-center justify-center gap-2" style={{ fontFamily: 'Syne, sans-serif'}}>
+                  <span className="bg-[#FFE600] border-[4px] border-black px-2 py-1 shadow-[4px_4px_0px_0px_#000] rotate-[-0.8deg]">DOWN</span>
+                  <span className="bg-[#22D3EE] border-[4px] border-black px-2 py-1 shadow-[4px_4px_0px_0px_#000] rotate-[0.8deg]">LOADING</span>
+                  <span className="bg-[#A78BFA] border-[4px] border-black px-2 py-1 shadow-[4px_4px_0px_0px_#000] rotate-[-0.5deg]">!!!</span>
+                </h3>
+                <p className="mt-2 font-mono text-xs font-black uppercase tracking-widest opacity-60">FETCHING YOUR CHAOS FROM THE DATABASE...</p>
+                {/* funky loader — not circular: staggered brutal blocks */}
+                <div className="mt-5 flex items-end justify-center gap-1.5 h-12">
+                  <div className="w-3 bg-black border-[2px] border-black animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '18px', animationDelay: '0ms'}} />
+                  <div className="w-4 bg-[#FFE600] border-[3px] border-black animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '36px', animationDelay: '90ms'}} />
+                  <div className="w-3 bg-[#22D3EE] border-[2px] border-black animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '24px', animationDelay: '180ms'}} />
+                  <div className="w-5 bg-[#FF3B30] border-[3px] border-black animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '42px', animationDelay: '270ms'}} />
+                  <div className="w-3 bg-[#A78BFA] border-[2px] border-black animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '20px', animationDelay: '360ms'}} />
+                  <div className="w-4 bg-black border-[3px] border-white animate-[brutal-bar_600ms_ease-in-out_infinite]" style={{ height: '30px', animationDelay: '450ms'}} />
+                </div>
+                <div className="mt-4 flex justify-center gap-1">
+                  <div className="h-1.5 w-8 bg-black animate-pulse" />
+                  <div className="h-1.5 w-8 bg-[#FFE600] border border-black animate-pulse" style={{ animationDelay: '200ms'}} />
+                  <div className="h-1.5 w-8 bg-[#22D3EE] border border-black animate-pulse" style={{ animationDelay: '400ms'}} />
+                </div>
+                <p className="mt-3 font-mono text-[10px] font-black tracking-[0.15em] uppercase bg-[#FFE600] border-[2px] border-black inline-block px-2 py-1">HOLD TIGHT — CONCRETE IS SETTING</p>
+              </div>
+              <style>{`@keyframes brutal-bar { 0%,100% { transform: scaleY(0.6)} 50% { transform: scaleY(1.35)} }`}</style>
+            </div>
+          ) : hasEverHadTasks === false ? (
             <div className="bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-6 animate-slam">
               <div className="bg-[#FF3B30] text-white border-[4px] border-black inline-block px-3 py-1 font-black tracking-widest uppercase shadow-[4px_4px_0px_0px_#000] rotate-[-0.6deg]">WELCOME TO VASTAVIK TODO!</div>
               <div className="mt-4 bg-[#FFE600] border-[4px] border-black p-5 shadow-[6px_6px_0px_0px_#000]">
@@ -439,10 +485,10 @@ export default function DashboardToday() {
                 <div className="h-[4px] flex-1 bg-black min-w-[40px]" />
                 <span className="bg-[#FFE600] border-[3px] border-black px-2 py-1 font-mono text-[10px] font-black">{format(selectedDate, "yyyy-MM-dd").toUpperCase()}</span>
                 {(activeTasks.length + completedTasks.length > 0) && (
-                  <button onClick={deleteAllVisible} className="ml-auto bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000] hover:bg-black hover:text-[#FFE600]">DELETE ALL ({activeTasks.length + completedTasks.length}) ✕</button>
+                  <button onClick={()=> setPendingDeleteAll(true)} className="ml-auto bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000] hover:bg-black hover:text-[#FFE600]">DELETE ALL ({activeTasks.length + completedTasks.length}) ✕</button>
                 )}
               </div>
-              {activeTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)}
+              {activeTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={(t)=> setPendingDelete(t)} />)}
               {completedTasks.length > 0 && (
                 <div className="pt-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -450,7 +496,7 @@ export default function DashboardToday() {
                     <div className="h-[3px] flex-1 bg-black opacity-40" />
                   </div>
                   <div className="space-y-3 opacity-90">
-                    {completedTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)}
+                    {completedTasks.map(task => <TaskCard key={task.id} task={task} onToggle={toggleTask} onClick={() => {}} onDelete={(t)=> setPendingDelete(t)} />)}
                   </div>
                 </div>
               )}
@@ -458,6 +504,44 @@ export default function DashboardToday() {
           )}
         </div>
       </main>
+
+      {/* BRUTAL DELETE MODAL — on-screen, not browser confirm */}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={()=> setPendingDelete(null)} />
+          <div className="relative w-full max-w-[420px] bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 animate-pop">
+            <div className="absolute top-0 left-0 right-0 h-2 flex">
+              <div className="flex-1 bg-[#FF3B30] border-r-[2px] border-black" />
+              <div className="flex-1 bg-black" />
+              <div className="flex-1 bg-[#FFE600] border-l-[2px] border-black" />
+            </div>
+            <div className="bg-black text-[#FFE600] inline-block px-2 py-1 font-mono text-[10px] font-black tracking-[0.18em] border-[2px] border-black mt-2">⚠ CONFIRM DESTRUCTION</div>
+            <h3 className="mt-3 font-black text-xl tracking-tighter uppercase" style={{ fontFamily: 'Syne, sans-serif'}}>DELETE THIS SLAB?</h3>
+            <div className="mt-2 bg-[#FFE600] border-[3px] border-black p-3 shadow-[3px_3px_0px_0px_#000]">
+              <p className="font-mono text-xs font-black uppercase tracking-wide break-words">“{pendingDelete.title}”</p>
+              <p className="font-mono text-[10px] font-black uppercase opacity-60 mt-1">THIS WILL VAPORIZE THE TASK FROM FIRESTORE. NO UNDO.</p>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={()=> setPendingDelete(null)} className="bg-white text-black border-[4px] border-black py-3 font-black text-sm tracking-widest uppercase shadow-[4px_4px_0px_0px_#000] hover:bg-[#FFE600]">CANCEL</button>
+              <button onClick={()=> deleteTask(pendingDelete)} className="bg-[#FF3B30] text-white border-[4px] border-black py-3 font-black text-sm tracking-widest uppercase shadow-[4px_4px_0px_0px_#000] hover:bg-black hover:text-[#FFE600]">DELETE ✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingDeleteAll && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={()=> setPendingDeleteAll(false)} />
+          <div className="relative w-full max-w-[420px] bg-[#FF3B30] border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 animate-pop">
+            <div className="bg-black text-white inline-block px-2 py-1 font-mono text-[10px] font-black tracking-[0.18em] border-[2px] border-black">☠ MASS DESTRUCTION</div>
+            <h3 className="mt-3 font-black text-xl tracking-tighter uppercase text-white" style={{ fontFamily: 'Syne, sans-serif'}}>NUKE ALL {activeTasks.length + completedTasks.length} SLABS?</h3>
+            <p className="mt-2 font-mono text-xs font-black uppercase bg-white border-[3px] border-black p-2">FOR {format(selectedDate, "MMM d").toUpperCase()} — THIS WIPES FIRESTORE. NO UNDO.</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={()=> setPendingDeleteAll(false)} className="bg-white text-black border-[4px] border-black py-3 font-black text-sm tracking-widest uppercase shadow-[4px_4px_0px_0px_#000]">CANCEL</button>
+              <button onClick={deleteAllVisible} className="bg-black text-[#FFE600] border-[4px] border-black py-3 font-black text-sm tracking-widest uppercase shadow-[4px_4px_0px_0px_#000]">DELETE ALL ✕</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

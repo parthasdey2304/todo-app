@@ -10,6 +10,8 @@ import { Inbox as InboxIcon, Zap } from "lucide-react";
 export default function InboxPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
+  const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
 
   useEffect(() => {
     if (user && db) {
@@ -38,8 +40,8 @@ export default function InboxPage() {
   };
   const deleteTask = async (task: Task) => {
     if (!db) return;
-    if (!confirm(`Delete "${task.title}"?`)) return;
     await deleteDoc(doc(db!, "tasks", task.id));
+    setPendingDelete(null);
   };
 
   const inboxTasks = tasks.filter(t => !t.scheduledDate && t.status === 'active');
@@ -65,7 +67,7 @@ export default function InboxPage() {
       <div className="w-full max-w-[880px] mx-auto px-3 sm:px-4 md:px-6 py-4 space-y-3">
         {inboxTasks.length > 0 && (
           <div className="flex justify-end">
-            <button onClick={async ()=> { if(!db) return; if(!confirm(`Delete all ${inboxTasks.length} inbox tasks?`)) return; const b=writeBatch(db!); inboxTasks.forEach(t=> b.delete(doc(db!, "tasks", t.id))); await b.commit(); }} className="bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000]">DELETE ALL ✕</button>
+            <button onClick={()=> setPendingDeleteAll(true)} className="bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest uppercase shadow-[3px_3px_0px_0px_#000]">DELETE ALL ✕</button>
           </div>
         )}
         {inboxTasks.length === 0 ? (
@@ -75,9 +77,35 @@ export default function InboxPage() {
             <p className="font-mono text-xs font-black uppercase opacity-50">NO UNSCHEDULED CHAOS — YOU&apos;RE CLEAN</p>
           </div>
         ) : (
-          inboxTasks.map(t => <TaskCard key={t.id} task={t} onToggle={toggleTask} onClick={() => {}} onDelete={deleteTask} />)
+          inboxTasks.map(t => <TaskCard key={t.id} task={t} onToggle={toggleTask} onClick={() => {}} onDelete={(t)=> setPendingDelete(t)} />)
         )}
       </div>
+      {pendingDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={()=> setPendingDelete(null)} />
+          <div className="relative w-full max-w-[420px] bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 animate-pop">
+            <div className="bg-black text-[#FFE600] inline-block px-2 py-1 font-mono text-[10px] font-black tracking-[0.18em] border-[2px] border-black">⚠ CONFIRM DESTRUCTION</div>
+            <h3 className="mt-3 font-black text-xl tracking-tighter uppercase" style={{ fontFamily: 'Syne, sans-serif'}}>DELETE THIS SLAB?</h3>
+            <div className="mt-2 bg-[#FFE600] border-[3px] border-black p-3"><p className="font-mono text-xs font-black uppercase break-words">“{pendingDelete.title}”</p></div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={()=> setPendingDelete(null)} className="bg-white border-[4px] border-black py-3 font-black text-sm uppercase shadow-[4px_4px_0px_0px_#000]">CANCEL</button>
+              <button onClick={()=> deleteTask(pendingDelete)} className="bg-[#FF3B30] text-white border-[4px] border-black py-3 font-black text-sm uppercase shadow-[4px_4px_0px_0px_#000]">DELETE ✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingDeleteAll && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={()=> setPendingDeleteAll(false)} />
+          <div className="relative w-full max-w-[420px] bg-[#FF3B30] border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 animate-pop">
+            <h3 className="font-black text-xl uppercase text-white" style={{ fontFamily: 'Syne, sans-serif'}}>NUKE ALL {inboxTasks.length}?</h3>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button onClick={()=> setPendingDeleteAll(false)} className="bg-white border-[4px] border-black py-3 font-black text-sm uppercase">CANCEL</button>
+              <button onClick={async ()=> { if(!db) return; const b=writeBatch(db!); inboxTasks.forEach(t=> b.delete(doc(db!, "tasks", t.id))); await b.commit(); setPendingDeleteAll(false); }} className="bg-black text-[#FFE600] border-[4px] border-black py-3 font-black text-sm uppercase">DELETE ALL ✕</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
