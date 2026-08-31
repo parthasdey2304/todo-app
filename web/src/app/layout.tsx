@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Syne, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const space = Space_Grotesk({ subsets: ["latin"], weight: ["700"], variable: "--font-space" });
 const syne = Syne({ subsets: ["latin"], weight: ["800"], variable: "--font-syne" });
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${space.variable} ${syne.variable} ${jetbrains.variable} ${bebas.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider><AuthProvider>{children}</AuthProvider></ThemeProvider>
       </body>
     </html>
   );

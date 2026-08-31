@@ -7,6 +7,7 @@ import { Project, Task } from "@/types";
 import { TaskCard } from "@/components/TaskCard";
 import { Folder, Zap, Box, Plus, X, Trash2, Check, Clock, Flag, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { useTheme } from "@/components/ThemeProvider";
 
 const COLOR_OPTIONS = [
   { label: "YELLOW", value: "bg-[#FFE600]", hex: "#FFE600" },
@@ -30,6 +31,7 @@ function filterTasksForProject(tasks: Task[], project: Project) {
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const { brutalMode, accent } = useTheme();
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +160,7 @@ export default function ProjectsPage() {
   const selectedDone = selectedTasks.filter(t => t.status === 'completed');
 
   return (
-    <div className="min-h-screen bg-[#FFE600] relative w-full overflow-x-hidden">
+    <div className="min-h-screen relative w-full overflow-x-hidden" style={{ background: brutalMode ? "#0a0a0a" : accent }}>
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 12px)` }} />
 
       {/* HEADER */}

@@ -121,19 +121,19 @@ export default function AuthPage() {
 
       {/* HEADER */}
       <header className="relative z-20 max-w-[1400px] mx-auto px-3 sm:px-6 mt-3">
-        <div className="bg-white border-[4px] border-black flex items-center justify-between px-4 py-3 shadow-[8px_8px_0px_0px_#000]">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 bg-black border-[3px] border-black grid place-items-center text-[#FFE600] font-black text-2xl rotate-[-2deg] shadow-[3px_3px_0px_0px_#000]">V</div>
-            <div className="leading-none">
-              <div className="font-black text-[22px] sm:text-[26px] tracking-tighter uppercase flex items-baseline gap-1" style={{ fontFamily: 'Syne, sans-serif' }}>
-                VASTAVIK<span className="bg-[#FFE600] border-[3px] border-black px-1 shadow-[2px_2px_0px_0px_#000] rotate-[1deg]">TODO</span>
+        <div className="bg-white border-[4px] border-black flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-3 shadow-[8px_8px_0px_0px_#000] overflow-visible">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-black border-[3px] border-black grid place-items-center text-[#FFE600] font-black text-xl sm:text-2xl rotate-[-2deg] shadow-[3px_3px_0px_0px_#000] shrink-0">V</div>
+            <div className="leading-none min-w-0">
+              <div className="font-black text-[18px] xs:text-[20px] sm:text-[26px] tracking-tighter uppercase flex flex-wrap items-baseline gap-1" style={{ fontFamily: 'Syne, sans-serif' }}>
+                <span className="whitespace-nowrap">VASTAVIK</span><span className="bg-[#FFE600] border-[3px] border-black px-1 shadow-[2px_2px_0px_0px_#000] rotate-[1deg] inline-block whitespace-nowrap shrink-0">TODO</span>
               </div>
-              <div className="text-[11px] font-mono font-black tracking-[0.16em] uppercase opacity-60">BRUTAL • FUNKY • MANGA</div>
+              <div className="text-[10px] sm:text-[11px] font-mono font-black tracking-[0.16em] uppercase opacity-60 whitespace-nowrap">BRUTAL • FUNKY • MANGA</div>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest shadow-[3px_3px_0px_0px_#000] animate-jitter">● SYSTEM ONLINE</span>
-            <span className="bg-black text-white px-3 py-2 font-mono text-xs font-black tracking-widest border-[2px] border-black">2026 // FUNK</span>
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <span className="bg-[#FF3B30] text-white border-[3px] border-black px-3 py-1 font-black text-xs tracking-widest shadow-[3px_3px_0px_0px_#000] animate-jitter whitespace-nowrap">● SYSTEM ONLINE</span>
+            <span className="bg-black text-white px-3 py-2 font-mono text-xs font-black tracking-widest border-[2px] border-black whitespace-nowrap">2026 // FUNK</span>
           </div>
         </div>
       </header>

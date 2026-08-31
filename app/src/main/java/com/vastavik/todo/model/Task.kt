@@ -24,9 +24,11 @@ data class Task(
     val scheduledDate: String? = null, // YYYY-MM-DD
     val dueAt: String? = null, // ISO string
     val reminderAt: String? = null, // ISO string
-    val recurrence: String? = "none", // none, daily, weekdays, weekly, monthly, custom
+    val recurrence: String? = "none",
     val categoryId: String? = null,
     val categoryName: String? = null,
+    val projectId: String? = null,
+    val projectName: String? = null,
     val labels: List<String> = emptyList(),
     val priority: String = "none", // none, low, medium, high, urgent
     val attachments: List<Attachment> = emptyList(),
@@ -35,4 +37,15 @@ data class Task(
     @ServerTimestamp val updatedAt: Date? = null,
     @ServerTimestamp val completedAt: Date? = null,
     @ServerTimestamp val archivedAt: Date? = null
+)
+
+data class Project(
+    @DocumentId val id: String = "",
+    val userId: String = "",
+    val name: String = "",
+    val color: String = "bg-[#FFE600]",
+    val icon: String = "◆",
+    val order: Long = 0,
+    @ServerTimestamp val createdAt: Date? = null,
+    @ServerTimestamp val updatedAt: Date? = null
 )

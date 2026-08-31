@@ -6,9 +6,11 @@ import { db } from "@/lib/firebase";
 import { Task } from "@/types";
 import { TaskCard } from "@/components/TaskCard";
 import { Calendar } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function UpcomingPage() {
   const { user } = useAuth();
+  const { brutalMode, accent } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
   const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
@@ -47,7 +49,7 @@ export default function UpcomingPage() {
   const upcomingTasks = tasks.filter(t => t.scheduledDate && t.status === 'active');
 
   return (
-    <div className="min-h-screen bg-[#FFE600] relative w-full overflow-x-hidden">
+    <div className="min-h-screen relative w-full overflow-x-hidden" style={{ background: brutalMode ? "#0a0a0a" : accent }}>
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 12px)` }} />
       <div className="bg-white border-b-[4px] border-black pl-[72px] md:pl-6 pr-3 sm:px-6 py-4 sm:py-6 shadow-[0px_4px_0px_0px_#000] relative">
         <h1 className="font-black text-[24px] sm:text-[32px] tracking-tighter uppercase flex flex-wrap items-center gap-2 sm:gap-3" style={{ fontFamily: 'Syne, sans-serif' }}>

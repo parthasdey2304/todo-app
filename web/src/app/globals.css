@@ -9,6 +9,7 @@
   --brutal-black: #000000;
   --brutal-white: #ffffff;
   --brutal-bg: #FFE600;
+  --brutal-accent: #FFE600;
 }
 
 * {
@@ -20,10 +21,11 @@ html {
 }
 
 body {
-  background: #FFE600;
+  background: var(--brutal-bg, #FFE600);
   color: #000;
   font-family: var(--font-space), ui-sans-serif, system-ui, sans-serif;
   overflow-x: hidden;
+  transition: background 0.2s ease;
 }
 
 /* HASH PATTERN OVERLAY */
@@ -181,3 +183,11 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #FF3B30; }
 
 ::selection { background: #000; color: #FFE600; }
+
+/* BRUTAL DARK MODE — toggled by settings */
+html.brutal-dark body {
+  background: #0a0a0a;
+}
+html.brutal-dark {
+  --brutal-bg: #0a0a0a;
+}

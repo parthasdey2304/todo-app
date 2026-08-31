@@ -1,3 +1,15 @@
+export interface Project {
+  id: string;
+  userId: string;
+  name: string;
+  color: string; // tailwind bg class like bg-[#FFE600] or hex
+  icon: string;
+  order: number;
+  createdAt: any;
+  updatedAt: any;
+}
+
+// keep Category alias for backwards compat — Projects are stored in `projects` collection
 export interface Category {
   id: string;
   name: string;
@@ -35,6 +47,8 @@ export interface Task {
   recurrence?: Recurrence;
   categoryId?: string;
   categoryName?: string;
+  projectId?: string;
+  projectName?: string;
   labels: string[];
   priority: Priority;
   attachments: Attachment[];

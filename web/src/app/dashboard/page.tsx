@@ -11,9 +11,11 @@ import { WeeklyDateSelector } from "@/components/WeeklyDateSelector";
 import { TaskCard } from "@/components/TaskCard";
 import { format } from "date-fns";
 import { Plus, Check, Mic, Calendar as CalendarIcon, Flag, Clock, CircleDot, Zap, Folder, X, Box } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function DashboardToday() {
   const { user, loading } = useAuth();
+  const { brutalMode, accent } = useTheme();
   const router = useRouter();
   
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -183,6 +185,7 @@ export default function DashboardToday() {
     try {
       setFirestoreError("");
       // Build payload with functional fields — stored in Firestore
+      const selectedProject = projects.find(p=> p.id===selectedProjectId);
       const payload: any = {
         userId: user.uid,
         title,
@@ -195,6 +198,12 @@ export default function DashboardToday() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
+      if (selectedProject) {
+        payload.projectId = selectedProject.id;
+        payload.projectName = selectedProject.name;
+        payload.categoryId = selectedProject.id;
+        payload.categoryName = selectedProject.name;
+      }
       if (dueAt) payload.dueAt = new Date(dueAt).toISOString();
       if (reminderAt) payload.reminderAt = new Date(reminderAt).toISOString();
       await addDoc(collection(db!, "tasks"), payload);
@@ -243,6 +252,30 @@ export default function DashboardToday() {
     }
   };
 
+  const createProjectFromToday = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const name = newProjectName.trim();
+    if (!name) { setCreateProjectError("NAME REQUIRED"); setTimeout(()=> setCreateProjectError(""), 3000); return; }
+    if (!user || !db) return;
+    if (projects.some(p=> p.name.toLowerCase()===name.toLowerCase())) { setCreateProjectError("SLAB ALREADY EXISTS"); setTimeout(()=> setCreateProjectError(""), 3000); return; }
+    try {
+      const ref = await addDoc(collection(db!, "projects"), {
+        userId: user.uid,
+        name: name.toUpperCase(),
+        color: newProjectColor,
+        icon: newProjectIcon,
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setSelectedProjectId(ref.id);
+      setNewProjectName("");
+      setShowCreateProject(false);
+      setShowProjectPicker(false);
+      setCreateProjectError("");
+    } catch(err:any){ setCreateProjectError(err.message); }
+  };
+
   const toggleTask = async (task: Task) => {
     if (!db) return;
     const taskRef = doc(db!, "tasks", task.id);
@@ -280,7 +313,7 @@ export default function DashboardToday() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFE600] relative w-full overflow-x-hidden">
+    <div className="min-h-screen relative w-full overflow-x-hidden" style={{ background: brutalMode ? "#0a0a0a" : accent }}>
       {/* hash bg */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: `repeating-linear-gradient(-45deg, #000 0 2px, transparent 2px 12px)` }} />
 
@@ -383,6 +416,35 @@ export default function DashboardToday() {
             <button type="button" onClick={()=> setMangaMode(v=>!v)} className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 border-[2px] sm:border-[3px] border-black text-[11px] sm:text-xs font-black whitespace-nowrap shadow-[2px_2px_0px_0px_#000] ${mangaMode ? 'bg-black text-[#FFE600]' : 'bg-[#FFE600] text-black hover:bg-black hover:text-[#FFE600]'}`}>
               <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> MANGA
             </button>
+
+            {/* PROJECT — picker right from Today */}
+            <div className="relative">
+              <button type="button" onClick={()=> setShowProjectPicker(v=>!v)} className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 border-[2px] sm:border-[3px] border-black text-[11px] sm:text-xs font-black whitespace-nowrap shadow-[2px_2px_0px_0px_#000] ${selectedProjectId ? 'bg-black text-[#FFE600]' : 'bg-white text-black hover:bg-[#FFE600]'}`}>
+                <Folder className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> {selectedProjectId ? (projects.find(p=>p.id===selectedProjectId)?.name ?? "PROJECT") : "PROJECT"}
+              </button>
+              {showProjectPicker && (
+                <div className="absolute z-30 top-full mt-2 right-0 sm:left-0 sm:right-auto bg-white border-[4px] border-black shadow-[6px_6px_0px_0px_#000] p-2 flex flex-col gap-1 min-w-[220px] max-h-[280px] overflow-y-auto">
+                  <button type="button" onClick={()=> { setSelectedProjectId(null); setShowProjectPicker(false); }} className={`text-left px-3 py-2 border-[3px] border-black font-black text-xs uppercase flex items-center justify-between ${!selectedProjectId ? 'bg-black text-[#FFE600]' : 'bg-white hover:bg-[#FFE600]'}`}>
+                    <span>NO PROJECT</span> {!selectedProjectId && <Check className="w-4 h-4" />}
+                  </button>
+                  {projects.map(p=>(
+                    <button key={p.id} type="button" onClick={()=> { setSelectedProjectId(p.id); setShowProjectPicker(false); }} className={`text-left px-3 py-2 border-[3px] border-black font-black text-xs uppercase flex items-center gap-2 ${selectedProjectId===p.id ? 'bg-black text-[#FFE600]' : 'bg-white hover:bg-[#FFE600]'}`}>
+                      <span className="h-6 w-6 border-[2px] border-black grid place-items-center text-[10px] shrink-0" style={{ background: p.color.includes('#FFE600') ? '#FFE600' : p.color.includes('#22D3EE') ? '#22D3EE' : p.color.includes('#A78BFA') ? '#A78BFA' : p.color.includes('#FF3B30') ? '#FF3B30' : '#000', color: p.color.includes('text-white') ? '#fff' : '#000' }}>{p.icon}</span>
+                      <span className="truncate">{p.name}</span>
+                      {selectedProjectId===p.id && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                  ))}
+                  <div className="h-[2px] bg-black my-1" />
+                  <button type="button" onClick={()=> { setShowProjectPicker(false); setShowCreateProject(true); }} className="bg-[#FFE600] border-[3px] border-black px-3 py-2 font-black text-xs uppercase flex items-center gap-2 hover:bg-black hover:text-[#FFE600]">
+                    <Plus className="w-4 h-4 stroke-[3]" /> NEW PROJECT...
+                  </button>
+                  <a href="/dashboard/projects" className="text-center font-mono text-[10px] font-black tracking-widest uppercase bg-black text-[#FFE600] border-[2px] border-black py-1 hover:bg-white hover:text-black">GO TO PROJECTS →</a>
+                </div>
+              )}
+            </div>
+            {selectedProjectId && (
+              <button type="button" onClick={()=> setSelectedProjectId(null)} className="flex items-center px-2 py-1 border-[3px] border-black bg-[#FF3B30] text-white font-black text-[11px] shadow-[2px_2px_0px_0px_#000]">✕</button>
+            )}
           </div>
 
           {/* DUE PICKER DROPDOWN */}
@@ -412,7 +474,69 @@ export default function DashboardToday() {
               </div>
             </div>
           )}
+          {selectedProjectId && (
+            <div className="mt-3 bg-black text-[#FFE600] border-[3px] border-black px-3 py-2 flex items-center gap-2 font-mono text-xs font-black tracking-widest">
+              <Folder className="w-4 h-4" /> SLAMMING INTO: {projects.find(p=>p.id===selectedProjectId)?.name ?? "PROJECT"} <span className="ml-auto bg-[#FFE600] text-black px-2 py-0.5 border border-white">PROJECT LOCKED</span>
+            </div>
+          )}
         </form>
+
+        {/* CREATE PROJECT FROM TODAY */}
+        {showCreateProject && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={()=> setShowCreateProject(false)} />
+            <form onSubmit={createProjectFromToday} className="relative w-full max-w-[480px] bg-white border-[4px] border-black shadow-[8px_8px_0px_0px_#000] p-5 animate-pop">
+              <div className="absolute top-0 left-0 right-0 h-2 flex">
+                <div className="flex-1 bg-[#FFE600] border-r-[2px] border-black" />
+                <div className="flex-1 bg-[#22D3EE] border-r-[2px] border-black" />
+                <div className="flex-1 bg-[#A78BFA] border-r-[2px] border-black" />
+                <div className="flex-1 bg-[#FF3B30]" />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <div className="bg-black text-[#FFE600] inline-block px-2 py-1 font-mono text-[10px] font-black tracking-[0.18em] border-[2px] border-black">◆ NEW SLAB // FROM TODAY</div>
+                <button type="button" onClick={()=> setShowCreateProject(false)} className="bg-white border-[3px] border-black p-1"><X className="w-4 h-4 stroke-[3]" /></button>
+              </div>
+              <h3 className="mt-3 font-black text-xl tracking-tighter uppercase" style={{ fontFamily: 'Syne, sans-serif' }}>NAME YOUR SLAB</h3>
+              {createProjectError && <div className="mt-2 bg-[#FF3B30] text-white border-[3px] border-black p-2 font-mono text-xs font-black uppercase">{createProjectError}</div>}
+              <input autoFocus value={newProjectName} onChange={e=> setNewProjectName(e.target.value)} placeholder="E.G. PERSONAL, WORK..." className="mt-3 w-full bg-[#FFFDE0] border-[4px] border-black px-3 py-3 font-black uppercase tracking-tight placeholder:text-black/40 focus:bg-[#FFE600] focus:outline-none shadow-[3px_3px_0px_0px_#000]" />
+              <div className="mt-4">
+                <p className="font-mono text-[10px] font-black tracking-widest uppercase">PICK COLOR</p>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {[
+                    { label: "YELLOW", value: "bg-[#FFE600]" },
+                    { label: "CYAN", value: "bg-[#22D3EE]" },
+                    { label: "PURPLE", value: "bg-[#A78BFA]" },
+                    { label: "RED", value: "bg-[#FF3B30] text-white" },
+                    { label: "GREEN", value: "bg-[#22C55E]" },
+                    { label: "ORANGE", value: "bg-[#FF9A00]" },
+                    { label: "PINK", value: "bg-[#FF6B9D]" },
+                    { label: "BLACK", value: "bg-black text-[#FFE600]" },
+                  ].map(c => (
+                    <button key={c.value} type="button" onClick={()=> setNewProjectColor(c.value)} className={`h-10 border-[3px] border-black font-black text-[10px] tracking-widest uppercase shadow-[2px_2px_0px_0px_#000] ${c.value} ${newProjectColor===c.value ? 'ring-4 ring-black ring-offset-2' : ''}`}>{c.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="font-mono text-[10px] font-black tracking-widest uppercase">PICK ICON</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {["◆","▓","★","●","▲","■","⬢","✦","☻","⚡"].map(ic => (
+                    <button key={ic} type="button" onClick={()=> setNewProjectIcon(ic)} className={`h-10 w-10 border-[3px] border-black font-black text-lg grid place-items-center shadow-[2px_2px_0px_0px_#000] ${newProjectIcon===ic ? 'bg-black text-[#FFE600]' : 'bg-white text-black hover:bg-[#FFE600]'}`}>{ic}</button>
+                  ))}
+                </div>
+              </div>
+              <div className={`mt-4 border-[4px] border-black p-4 shadow-[4px_4px_0px_0px_#000] flex items-center gap-3 ${newProjectColor}`}>
+                <div className="h-10 w-10 bg-black text-white border-[3px] border-black grid place-items-center font-black text-xl">{newProjectIcon}</div>
+                <span className="font-black text-lg tracking-tighter uppercase truncate" style={{ fontFamily: 'Syne, sans-serif' }}>{newProjectName.trim() || "PREVIEW SLAB"}</span>
+                <span className="ml-auto bg-white text-black border-[3px] border-black px-2 py-1 font-mono text-xs font-black">PREVIEW</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button type="button" onClick={()=> setShowCreateProject(false)} className="bg-white border-[4px] border-black py-3 font-black text-sm uppercase shadow-[4px_4px_0px_0px_#000]">CANCEL</button>
+                <button type="submit" className="bg-black text-[#FFE600] border-[4px] border-black py-3 font-black text-sm uppercase shadow-[4px_4px_0px_0px_#000] hover:bg-[#FFE600] hover:text-black">CREATE ✦ SLAM!</button>
+              </div>
+              <p className="mt-2 font-mono text-[10px] font-black text-center opacity-60">CREATED SLAB WILL AUTO-SELECT FOR NEXT TASK</p>
+            </form>
+          </div>
+        )}
 
         {isListening && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#FFE600]/90 backdrop-blur-[2px] p-4 animate-pop" onClick={()=> { try{ recognitionRef.current?.stop(); }catch{}; setIsListening(false); }}>

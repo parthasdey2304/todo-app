@@ -1,22 +1,24 @@
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.gradle/
 local.properties
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
 
 # Downloaded Gradle files
 gradle-8.2/
 gradle-8.2.zip
 
-# Module build folders
-/app/build/
+# Tool & Generated folders
+.opencode/
+graphify-out/
+
+# Logs
+*.log
+
